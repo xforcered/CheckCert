@@ -114,9 +114,9 @@ void go(char* args, int length) {
     //Variables
 	datap parser;
     BeaconDataParse(&parser, args, length);
-    char * target  = BeaconDataExtract(&parser, NULL);
+    char * t  = BeaconDataExtract(&parser, NULL);
 
-    // = MSVCRT$strtok(args, ",");
+    char* target = MSVCRT$strtok(t, ",");
     char* url = "/";		//set a default referrer of / as a referrer is required
     char* port = "443";		//set a default port of 443
     LPCWSTR agent = L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36";

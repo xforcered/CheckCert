@@ -1,15 +1,19 @@
 #include <windows.h>
 #include <stdio.h>
 #include <winhttp.h>
-#include <wincrypt.h>
 
+#ifdef __MINGW32__
+#include <wincrypt.h>
+#define _Frees_ptr_opt_
+#else
+#include <Wincrypt.h>
+#endif
 //#pragma comment(lib, "winhttp.lib")
 //#pragma comment(lib, "crypt32.lib")
 
 /*
 #define MSVCRT$wcscpy_s wcscpy_s
 */
-#define _Frees_ptr_opt_
 
 //MSVCRT
 WINBASEAPI void* WINAPI MSVCRT$malloc(SIZE_T);
