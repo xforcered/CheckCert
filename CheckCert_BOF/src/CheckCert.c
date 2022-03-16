@@ -35,7 +35,7 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
 
 	//Begin HTTP request
 	//Obtain a session handle
-	hSession = pWinHttpOpen(agent, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+	hSession = pWinHttpOpen(agent, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY , WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 
 	//Set reasonable timout values
 	pWinHttpSetTimeouts(hSession, 2000, 2000, 2000, 2000);
@@ -59,12 +59,20 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
 
 	//Obtain the SSL certificate using WINHTTP_OPTION_SERVER_CERT_CONTEXT
 	if (hResults)
-		hResults = pWinHttpQueryOption(hRequest, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCert, &dwLen);
+	{
+			hResults = pWinHttpQueryOption(hRequest, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCert, &dwLen);	
+			if (!hResults) {
+				// length is probably not sufficient
+				pCert = (CERT_CONTEXT*)MSVCRT$malloc(dwLen);
+				hResults = pWinHttpQueryOption(hRequest, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCert, &dwLen);
+			}		
+	}
 	else
 		BeaconPrintf(CALLBACK_OUTPUT,"[!] Unable to get SSL certificate.\n");
         
     //Begin parsing the SSL certificate context
 	if (hResults) {
+
         //Parse the SSL certificate context and obtain the CNAME/subject
 		len = pCertNameToStrA(X509_ASN_ENCODING, &pCert->pCertInfo->Subject, CERT_X500_NAME_STR, NULL, 0);
 		if (len) {
@@ -92,6 +100,10 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
         //Convert date to readable time
 		pFileTimeToSystemTime(&expiryFt, &expirySt);
 		pFileTimeToSystemTime(&effectiveDateFt, &effectiveSt);
+	}
+	else {
+		BeaconPrintf(CALLBACK_OUTPUT,"[!] Unable to get HTTP response.\n");
+		BeaconPrintf(CALLBACK_OUTPUT, "%X", KERNEL32$GetLastError());
 	}
 	
     //Name and issuer will be NULL if unable to obtain a SSL certificate
