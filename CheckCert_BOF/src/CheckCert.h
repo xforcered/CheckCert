@@ -85,6 +85,20 @@ typedef BOOL(WINAPI* WinHttpCloseHandle_t)(
 	IN HINTERNET hInternet
 	);
 
+typedef BOOL(WINAPI* WinHttpQueryHeaders_t)(
+  IN HINTERNET hRequest,
+  IN DWORD     dwInfoLevel,
+  IN LPCWSTR   pwszName,
+  OUT          LPVOID    lpBuffer,
+  LPDWORD   lpdwBufferLength,
+  LPDWORD   lpdwIndex
+);
+
+typedef BOOL(WINAPI* WinHttpReceiveResponse_t)(
+  HINTERNET hRequest,
+  LPVOID    lpReserved
+);
+
 //Crypt32.dll
 typedef DWORD(WINAPI* CertNameToStrA_t)(
 	IN  DWORD dwCertEncodingType,
