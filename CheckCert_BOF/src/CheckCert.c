@@ -24,6 +24,9 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
 	WinHttpSendRequest_t pWinHttpSendRequest = (WinHttpSendRequest_t)GetProcAddress(hinst, "WinHttpSendRequest");
 	WinHttpQueryOption_t pWinHttpQueryOption = (WinHttpQueryOption_t)GetProcAddress(hinst, "WinHttpQueryOption");
 	WinHttpCloseHandle_t pWinHttpCloseHandle = (WinHttpCloseHandle_t)GetProcAddress(hinst, "WinHttpCloseHandle");
+	WinHttpQueryHeaders_t pWinHttpQueryHeaders = (WinHttpQueryHeaders_t)GetProcAddress(hinst, "WinHttpQueryHeaders");
+	WinHttpReceiveResponse_t pWinHttpReceiveResponse = (WinHttpReceiveResponse_t)GetProcAddress(hinst, "WinHttpReceiveResponse");
+
 
 	//crypt32 - define pointers
 	hinst = LoadLibrary("crypt32.dll");
@@ -35,7 +38,7 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
 
 	//Begin HTTP request
 	//Obtain a session handle
-	hSession = pWinHttpOpen(agent, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+	hSession = pWinHttpOpen(agent, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY , WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 
 	//Set reasonable timout values
 	pWinHttpSetTimeouts(hSession, 2000, 2000, 2000, 2000);
@@ -57,14 +60,38 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
 	else
 		BeaconPrintf(CALLBACK_OUTPUT,"[!] Cannot connect to server.\n");
 
+	
+
 	//Obtain the SSL certificate using WINHTTP_OPTION_SERVER_CERT_CONTEXT
 	if (hResults)
-		hResults = pWinHttpQueryOption(hRequest, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCert, &dwLen);
+	{
+
+		// get response code as well
+		DWORD dwStatusCode = 0;
+		DWORD dwSize = sizeof(dwStatusCode);
+
+		pWinHttpReceiveResponse(hRequest, NULL);
+		pWinHttpQueryHeaders(hRequest, 
+			WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, 
+			NULL, 
+			&dwStatusCode, &dwSize, NULL);
+		
+		BeaconPrintf(CALLBACK_OUTPUT,"Response Code: %d", dwStatusCode);
+
+			hResults = pWinHttpQueryOption(hRequest, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCert, &dwLen);	
+			if (!hResults) {
+				// length is probably not sufficient
+				pCert = (CERT_CONTEXT*)MSVCRT$malloc(dwLen);
+				hResults = pWinHttpQueryOption(hRequest, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCert, &dwLen);
+			}		
+	}
 	else
 		BeaconPrintf(CALLBACK_OUTPUT,"[!] Unable to get SSL certificate.\n");
-        
+    
+
     //Begin parsing the SSL certificate context
 	if (hResults) {
+
         //Parse the SSL certificate context and obtain the CNAME/subject
 		len = pCertNameToStrA(X509_ASN_ENCODING, &pCert->pCertInfo->Subject, CERT_X500_NAME_STR, NULL, 0);
 		if (len) {
@@ -93,6 +120,10 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
 		pFileTimeToSystemTime(&expiryFt, &expirySt);
 		pFileTimeToSystemTime(&effectiveDateFt, &effectiveSt);
 	}
+	else {
+		BeaconPrintf(CALLBACK_OUTPUT,"[!] Unable to get HTTP response.\n");
+		BeaconPrintf(CALLBACK_OUTPUT, "%X", KERNEL32$GetLastError());
+	}
 	
     //Name and issuer will be NULL if unable to obtain a SSL certificate
     if (name != NULL)
@@ -112,7 +143,11 @@ void HTTPRequest(LPCWSTR http, INTERNET_PORT port, LPCWSTR referrer, LPCWSTR age
 void go(char* args, int length) {
 	
     //Variables
-    char * target = MSVCRT$strtok(args, ",");
+	datap parser;
+    BeaconDataParse(&parser, args, length);
+    char * t  = BeaconDataExtract(&parser, NULL);
+
+    char* target = MSVCRT$strtok(t, ",");
     char* url = "/";		//set a default referrer of / as a referrer is required
     char* port = "443";		//set a default port of 443
     LPCWSTR agent = L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36";

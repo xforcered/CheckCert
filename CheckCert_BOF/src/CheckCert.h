@@ -1,8 +1,13 @@
 #include <windows.h>
 #include <stdio.h>
 #include <winhttp.h>
-#include <Wincrypt.h>
 
+#ifdef __MINGW32__
+#include <wincrypt.h>
+#define _Frees_ptr_opt_
+#else
+#include <Wincrypt.h>
+#endif
 //#pragma comment(lib, "winhttp.lib")
 //#pragma comment(lib, "crypt32.lib")
 
@@ -23,6 +28,7 @@ WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap();
 WINBASEAPI void* WINAPI KERNEL32$HeapAlloc(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
 WINBASEAPI BOOL WINAPI KERNEL32$HeapFree(HANDLE hHeap, DWORD dwFlags, _Frees_ptr_opt_ LPVOID lpMem);
 WINBASEAPI FARPROC WINAPI KERNEL32$GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
+WINBASEAPI DWORD KERNEL32$GetLastError();
 
 //winhttp.dll
 typedef HINTERNET(WINAPI* WinHttpOpen_t)(
@@ -78,6 +84,20 @@ typedef BOOL(WINAPI* WinHttpQueryOption_t)(
 typedef BOOL(WINAPI* WinHttpCloseHandle_t)(
 	IN HINTERNET hInternet
 	);
+
+typedef BOOL(WINAPI* WinHttpQueryHeaders_t)(
+  IN HINTERNET hRequest,
+  IN DWORD     dwInfoLevel,
+  IN LPCWSTR   pwszName,
+  OUT          LPVOID    lpBuffer,
+  LPDWORD   lpdwBufferLength,
+  LPDWORD   lpdwIndex
+);
+
+typedef BOOL(WINAPI* WinHttpReceiveResponse_t)(
+  HINTERNET hRequest,
+  LPVOID    lpReserved
+);
 
 //Crypt32.dll
 typedef DWORD(WINAPI* CertNameToStrA_t)(
